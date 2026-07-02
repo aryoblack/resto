@@ -1,0 +1,186 @@
+B. DESAIN DASHBOARD ADMIN & MANAJEMEN (Web / Tablet)
+1. Struktur Sidebar Menu
+text
+
+📊 Dashboard
+📝 Manajemen Menu
+    - Daftar Menu
+    - Kategori
+    - Varian/Topping
+🪑 Manajemen Meja
+📦 Manajemen Stok
+👥 Manajemen Karyawan
+📋 Semua Pesanan (Live)
+🏷️ Promo & Voucher
+📈 Laporan
+⚙️ Pengaturan
+
+2. Wireframe Halaman Utama Dashboard
+
+Dashboard
+
+    Kartu metrik: Total pendapatan hari ini, jumlah pesanan, jumlah pelanggan, stok hampir habis
+
+    Grafik pendapatan per jam (untuk jam sibuk)
+
+    Daftar pesanan masuk real-time (mirip antrian):
+
+        Nomor meja / pesanan delivery
+
+        Waktu pesan
+
+        Total tagihan
+
+        Tombol Terima, Siap Masak, Selesai
+
+    Notifikasi stok menipis (contoh: "Beras tersisa 2 kg")
+
+Halaman Manajemen Menu
+
+    Tabel menu dengan kolom: Foto, Nama, Kategori, Harga, Stok, Status (Aktif/Nonaktif)
+
+    Tombol + Tambah Menu (modal popup: upload gambar, input nama, harga, stok, deskripsi)
+
+    Fitur edit & hapus
+
+Halaman Manajemen Stok
+
+    Tabel bahan baku (misal: tepung, ayam, sayur)
+
+    Kolom: Nama bahan, satuan, stok saat ini, stok minimal, supplier
+
+    Tombol Tambah Stok (catat pemasukan)
+
+    Fitur Peringatan otomatis jika stok < minimal
+
+Halaman Pesanan Live
+
+    Bisa di-filter per meja / delivery / dine-in
+
+    Setiap pesanan bisa diubah statusnya (Diterima → Dimasak → Selesai → Sajikan)
+
+    Untuk dapur: tampilan Kitchen Display System (khusus pesanan yang status "Dimasak")
+
+Halaman Laporan
+
+    Filter tanggal (harian, mingguan, bulanan)
+
+    Laporan penjualan (total omzet, metode pembayaran, menu terlaris)
+
+    Laporan stok opname
+
+    Export ke Excel/PDF
+
+C. DESAIN VISUAL (UI Style Guide)
+Color Palette (Nuansa Hangat & Modern)
+Peran	Warna	Kode Hex
+Primary (Tombol utama, header)	Oranye terang	#FF7A2F
+Secondary (Aksen, promo)	Hijau toska	#2EC4B6
+Background utama	Putih abu-abu	#F8F9FA
+Text utama	Abu gelap	#2D3436
+Text secondary	Abu-abu	#636E72
+Success (Status selesai)	Hijau	#00B894
+Warning (Stok habis)	Merah muda	#FF7675
+Bayangan	Soft shadow	0px 4px 12px rgba(0,0,0,0.05)
+Typography
+
+    Font utama: Poppins (untuk modern & bersih) atau Inter
+
+    Heading (H1): Bold, 22pt
+
+    Subheading (H2): Semi-bold, 18pt
+
+    Body text: Regular, 14pt
+
+    Caption / label: Light, 12pt
+
+Komponen UI
+
+    Card: Border radius 16px, elevation rendah, padding 12px
+
+    Tombol: Border radius 30px (pill shape), ada efek hover
+
+    Input form: Border radius 12px, padding 12px, outline warna primary saat fokus
+
+    Badge status: Bulat dengan teks kecil (Contoh: "Dimasak" background oranye lembut)
+
+D. DESAIN DATABASE (Struktur Tabel Utama)
+
+Sederhana namun fungsional:
+
+Tabel users (pelanggan & karyawan)
+
+    id, name, email, password, role (customer/waiter/chef/admin), poin, created_at
+
+Tabel menus
+
+    id, name, category_id, price, stock, description, image_url, is_available
+
+Tabel categories
+
+    id, name, sort_order
+
+Tabel variants (opsional, untuk level pedas, topping)
+
+    id, menu_id, variant_name, extra_price
+
+Tabel tables
+
+    id, table_number, qr_code, status (available/occupied)
+
+Tabel orders
+
+    id, user_id (customer), table_id, total_price, payment_method, payment_status, order_status, created_at
+
+Tabel order_items
+
+    id, order_id, menu_id, quantity, variant_selected, note, price_at_time
+
+Tabel reservations
+
+    id, user_id, table_id, date, time, number_of_people, status
+
+Tabel inventory (bahan baku)
+
+    id, ingredient_name, unit, current_stock, min_stock, supplier
+
+Tabel stock_movements
+
+    id, ingredient_id, quantity_change, type (in/out), note, created_at
+
+E. PROTOTYPE SKETSA (ASCII Art – Halaman Beranda Pelanggan)
+text
+
++--------------------------------------------------+
+|  [Logo Resto]            🔍      🛒 (3)          |
++--------------------------------------------------+
+|  ⭐ PROMO: Diskon 20% min beli 50k              |
+|  📢 [Banner]                                     |
++--------------------------------------------------+
+|  Cari menu...                                    |
++--------------------------------------------------+
+|  Kategori:  [Semua] [Makanan] [Minuman] [Snack] |
++--------------------------------------------------+
+|  ┌─────────┐  ┌─────────┐  ┌─────────┐         |
+|  │ 🍔      │  │ 🍜      │  │ 🥤      │         |
+|  │Ayam Gep.│  │Mie Ayam │  │Es Teh   │         |
+|  │25k  ⭐4.5│  │20k  ⭐4.7│  │8k   ⭐4.8│         |
+|  │  [ + ]  │  │  [ + ]  │  │  [ + ]  │         |
+|  └─────────┘  └─────────┘  └─────────┘         |
+|                                                 |
+|  +--------------+                               |
+|  |  Scan Meja   | (tombol floating)             |
+|  +--------------+                               |
++--------------------------------------------------+
+
+KESIMPULAN
+
+Design aplikasi restoran di atas mencakup:
+
+    UI/UX untuk pelanggan (mobile) dan admin (web)
+
+    Alur bisnis dari scan QR → pesan → bayar → lacak → rating
+
+    Identitas visual (warna, font, komponen)
+
+    Struktur database siap pakai

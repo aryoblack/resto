@@ -1,0 +1,19 @@
+Admin
+Email    : admin@restoapp.com
+Password : Admin@123456
+
+Customer
+Email    : customer@restoapp.com
+Password : Customer@123456
+
+Waiter
+Email    : waiter@restoapp.com
+Password : Waiter@123456
+
+Kasir
+Email    : kasir@restoapp.com
+Password : Kasir@123456
+
+Chef
+Email    : chef@restoapp.com
+Password : Chef@123456

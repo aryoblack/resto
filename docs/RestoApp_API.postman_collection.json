@@ -1,0 +1,425 @@
+{
+    "info": {
+        "name": "RestoApp API",
+        "description": "Koleksi API endpoints untuk RestoApp — Sistem Manajemen Restoran. \n\nBase URL: {{base_url}}/api\n\nAutentikasi: Bearer Token (Sanctum)\n\nWorkflow:\n1. POST /auth/register atau /auth/login → dapatkan access_token\n2. Kirim header: Authorization: Bearer {access_token}",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "version": "1.0.0"
+    },
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000"
+        },
+        {
+            "key": "token",
+            "value": ""
+        }
+    ],
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+            }
+        ]
+    },
+    "item": [
+        {
+            "name": "🔐 Auth",
+            "item": [
+                {
+                    "name": "Register",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{base_url}}/api/auth/register",
+                        "header": [{ "key": "Accept", "value": "application/json" }],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        }
+                    }
+                },
+                {
+                    "name": "Login",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{base_url}}/api/auth/login",
+                        "header": [{ "key": "Accept", "value": "application/json" }],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"admin@resto.app\",\n  \"password\": \"password\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        }
+                    }
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{base_url}}/api/auth/logout",
+                        "header": [{ "key": "Accept", "value": "application/json" }]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "👤 Customer",
+            "item": [
+                {
+                    "name": "Browse Menus",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/customer/menus?category_id=&search=",
+                            "query": [
+                                { "key": "category_id", "value": "", "description": "Filter by category" },
+                                { "key": "search", "value": "", "description": "Search by name" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Order",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{base_url}}/api/customer/orders",
+                        "header": [{ "key": "Accept", "value": "application/json" }],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"table_id\": 1,\n  \"order_type\": \"dine_in\",\n  \"payment_method\": \"cash\",\n  \"items\": [\n    {\n      \"menu_id\": 1,\n      \"quantity\": 2,\n      \"variant_selected\": null,\n      \"note\": \"Pedas\"\n    }\n  ]\n}",
+                            "options": { "raw": { "language": "json" } }
+                        }
+                    }
+                },
+                {
+                    "name": "Initiate Payment (QRIS)",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{base_url}}/api/customer/orders/1/payment/initiate",
+                        "header": [{ "key": "Accept", "value": "application/json" }],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"payment_method\": \"qris\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        }
+                    }
+                },
+                {
+                    "name": "Submit Rating",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{base_url}}/api/customer/orders/1/rating",
+                        "header": [{ "key": "Accept", "value": "application/json" }],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"rating\": 5,\n  \"review\": \"Makanan enak banget!\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        }
+                    }
+                },
+                {
+                    "name": "Loyalty - Balance",
+                    "request": { "method": "GET", "url": "{{base_url}}/api/customer/loyalty/balance" }
+                },
+                {
+                    "name": "Loyalty - History",
+                    "request": { "method": "GET", "url": "{{base_url}}/api/customer/loyalty/history" }
+                },
+                {
+                    "name": "Loyalty - Redeem Points",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{base_url}}/api/customer/loyalty/redeem",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"points\": 100\n}",
+                            "options": { "raw": { "language": "json" } }
+                        }
+                    }
+                },
+                {
+                    "name": "Create Reservation",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{base_url}}/api/customer/reservations",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"table_id\": 1,\n  \"reservation_date\": \"2026-06-01\",\n  \"reservation_time\": \"19:00\",\n  \"guest_count\": 4,\n  \"notes\": \"Anniversary dinner\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        }
+                    }
+                },
+                {
+                    "name": "My Reservations",
+                    "request": { "method": "GET", "url": "{{base_url}}/api/customer/reservations" }
+                },
+                {
+                    "name": "Push Subscribe",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{base_url}}/api/customer/push-subscribe",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"endpoint\": \"https://fcm.googleapis.com/...\",\n  \"keys\": {\n    \"auth\": \"...\",\n    \"p256dh\": \"...\"\n  }\n}",
+                            "options": { "raw": { "language": "json" } }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "👨‍🍳 Staff",
+            "item": [
+                {
+                    "name": "List Orders",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/staff/orders?order_status=&order_type=&per_page=15",
+                            "query": [
+                                { "key": "order_status", "value": "", "description": "Diterima|Diproses|Dimasak|Selesai|Disajikan" },
+                                { "key": "order_type", "value": "", "description": "dine_in|delivery" },
+                                { "key": "per_page", "value": "15" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Show Order",
+                    "request": { "method": "GET", "url": "{{base_url}}/api/staff/orders/1" }
+                },
+                {
+                    "name": "Update Order Status",
+                    "request": {
+                        "method": "PATCH",
+                        "url": "{{base_url}}/api/staff/orders/1/status",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"status\": \"Dimasak\"\n}",
+                            "options": { "raw": { "language": "json" } }
+                        }
+                    }
+                },
+                {
+                    "name": "Confirm Cash Payment",
+                    "request": { "method": "POST", "url": "{{base_url}}/api/staff/orders/1/payment/confirm-cash" }
+                },
+                {
+                    "name": "KDS Orders",
+                    "request": { "method": "GET", "url": "{{base_url}}/api/staff/kds" }
+                }
+            ]
+        },
+        {
+            "name": "🔧 Admin",
+            "item": [
+                {
+                    "name": "Menu CRUD",
+                    "item": [
+                        { "name": "List Menus", "request": { "method": "GET", "url": "{{base_url}}/api/admin/menus" } },
+                        {
+                            "name": "Create Menu",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{base_url}}/api/admin/menus",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"name\": \"Nasi Goreng\",\n  \"category_id\": 1,\n  \"price\": 25000,\n  \"stock\": 50,\n  \"description\": \"Nasi goreng spesial\",\n  \"is_available\": true\n}",
+                                    "options": { "raw": { "language": "json" } }
+                                }
+                            }
+                        },
+                        { "name": "Show Menu", "request": { "method": "GET", "url": "{{base_url}}/api/admin/menus/1" } },
+                        { "name": "Delete Menu", "request": { "method": "DELETE", "url": "{{base_url}}/api/admin/menus/1" } },
+                        { "name": "Toggle Availability", "request": { "method": "PATCH", "url": "{{base_url}}/api/admin/menus/1/toggle-availability" } }
+                    ]
+                },
+                {
+                    "name": "Categories",
+                    "item": [
+                        { "name": "List", "request": { "method": "GET", "url": "{{base_url}}/api/admin/categories" } },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{base_url}}/api/admin/categories",
+                                "body": { "mode": "raw", "raw": "{\n  \"name\": \"Makanan Utama\",\n  \"sort_order\": 1\n}", "options": { "raw": { "language": "json" } } }
+                            }
+                        },
+                        {
+                            "name": "Reorder",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{base_url}}/api/admin/categories/reorder",
+                                "body": { "mode": "raw", "raw": "{\n  \"order\": [3, 1, 2]\n}", "options": { "raw": { "language": "json" } } }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Tables",
+                    "item": [
+                        { "name": "List", "request": { "method": "GET", "url": "{{base_url}}/api/admin/tables" } },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{base_url}}/api/admin/tables",
+                                "body": { "mode": "raw", "raw": "{\n  \"table_number\": \"10\"\n}", "options": { "raw": { "language": "json" } } }
+                            }
+                        },
+                        { "name": "Regenerate QR", "request": { "method": "POST", "url": "{{base_url}}/api/admin/tables/1/regenerate-qr" } }
+                    ]
+                },
+                {
+                    "name": "Inventory",
+                    "item": [
+                        { "name": "List", "request": { "method": "GET", "url": "{{base_url}}/api/admin/inventory" } },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{base_url}}/api/admin/inventory",
+                                "body": { "mode": "raw", "raw": "{\n  \"ingredient_name\": \"Beras\",\n  \"unit\": \"kg\",\n  \"current_stock\": 100,\n  \"min_stock\": 20,\n  \"supplier\": \"PT Beras Jaya\"\n}", "options": { "raw": { "language": "json" } } }
+                            }
+                        },
+                        {
+                            "name": "Add Stock",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{base_url}}/api/admin/inventory/1/add-stock",
+                                "body": { "mode": "raw", "raw": "{\n  \"quantity\": 50,\n  \"note\": \"Restok dari supplier\"\n}", "options": { "raw": { "language": "json" } } }
+                            }
+                        },
+                        { "name": "Movement History", "request": { "method": "GET", "url": "{{base_url}}/api/admin/inventory/1/movements" } }
+                    ]
+                },
+                {
+                    "name": "Promos",
+                    "item": [
+                        { "name": "List", "request": { "method": "GET", "url": "{{base_url}}/api/admin/promos" } },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{base_url}}/api/admin/promos",
+                                "body": { "mode": "raw", "raw": "{\n  \"name\": \"Promo 20%\",\n  \"code\": \"PROMO20\",\n  \"type\": \"percentage\",\n  \"value\": 20,\n  \"min_purchase\": 50000,\n  \"start_date\": \"2026-05-01\",\n  \"end_date\": \"2026-06-30\",\n  \"is_active\": true,\n  \"usage_limit\": 100\n}", "options": { "raw": { "language": "json" } } }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Reports",
+                    "item": [
+                        { "name": "Dashboard Metrics", "request": { "method": "GET", "url": "{{base_url}}/api/admin/reports/dashboard" } },
+                        {
+                            "name": "Sales Report",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/admin/reports/sales?period=daily&date_from=2026-05-01&date_to=2026-05-12",
+                                    "query": [
+                                        { "key": "period", "value": "daily" },
+                                        { "key": "date_from", "value": "2026-05-01" },
+                                        { "key": "date_to", "value": "2026-05-12" }
+                                    ]
+                                }
+                            }
+                        },
+                        { "name": "Stock Report", "request": { "method": "GET", "url": "{{base_url}}/api/admin/reports/stock" } },
+                        { "name": "Hourly Revenue", "request": { "method": "GET", "url": "{{base_url}}/api/admin/reports/hourly-revenue" } },
+                        {
+                            "name": "Export Sales (Excel)",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{base_url}}/api/admin/reports/export/sales",
+                                "body": { "mode": "raw", "raw": "{\n  \"format\": \"excel\",\n  \"period\": \"daily\"\n}", "options": { "raw": { "language": "json" } } }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Reservations",
+                    "item": [
+                        { "name": "List", "request": { "method": "GET", "url": "{{base_url}}/api/admin/reservations" } },
+                        { "name": "Confirm", "request": { "method": "POST", "url": "{{base_url}}/api/admin/reservations/1/confirm" } }
+                    ]
+                },
+                {
+                    "name": "Ratings",
+                    "item": [
+                        { "name": "Summary & Reviews", "request": { "method": "GET", "url": "{{base_url}}/api/admin/ratings" } }
+                    ]
+                },
+                {
+                    "name": "Settings",
+                    "item": [
+                        { "name": "Get All", "request": { "method": "GET", "url": "{{base_url}}/api/admin/settings" } },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{base_url}}/api/admin/settings",
+                                "body": { "mode": "raw", "raw": "{\n  \"settings\": {\n    \"restaurant_name\": \"Resto Nusantara\",\n    \"tax_percentage\": \"11\",\n    \"service_charge_percentage\": \"5\",\n    \"point_conversion_rate\": \"10000\"\n  }\n}", "options": { "raw": { "language": "json" } } }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Staff Management",
+                    "item": [
+                        {
+                            "name": "Create Staff",
+                            "request": {
+                                "method": "POST",
+                                "url": "{{base_url}}/api/admin/staff",
+                                "body": { "mode": "raw", "raw": "{\n  \"name\": \"Chef Budi\",\n  \"email\": \"budi@resto.app\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\",\n  \"role\": \"chef\"\n}", "options": { "raw": { "language": "json" } } }
+                            }
+                        },
+                        { "name": "Deactivate Staff", "request": { "method": "PATCH", "url": "{{base_url}}/api/admin/staff/2/deactivate" } }
+                    ]
+                },
+                {
+                    "name": "Cancel Order",
+                    "request": { "method": "POST", "url": "{{base_url}}/api/admin/orders/1/cancel" }
+                }
+            ]
+        },
+        {
+            "name": "🌐 Public",
+            "item": [
+                {
+                    "name": "Validate Voucher",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{base_url}}/api/voucher/validate",
+                        "body": { "mode": "raw", "raw": "{\n  \"code\": \"PROMO20\",\n  \"order_total\": 50000\n}", "options": { "raw": { "language": "json" } } }
+                    }
+                },
+                {
+                    "name": "Active Promos",
+                    "request": { "method": "GET", "url": "{{base_url}}/api/promos/active" }
+                },
+                {
+                    "name": "Table Availability",
+                    "request": { "method": "GET", "url": "{{base_url}}/api/tables/1/availability" }
+                },
+                {
+                    "name": "VAPID Public Key",
+                    "request": { "method": "GET", "url": "{{base_url}}/api/push/vapid-public-key" }
+                },
+                {
+                    "name": "Payment Webhook",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{base_url}}/api/payment/webhook",
+                        "body": { "mode": "raw", "raw": "{\n  \"order_id\": \"order-123\",\n  \"transaction_status\": \"settlement\",\n  \"signature_key\": \"...\"\n}", "options": { "raw": { "language": "json" } } }
+                    }
+                }
+            ]
+        }
+    ]
+}
