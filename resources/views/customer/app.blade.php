@@ -61,7 +61,7 @@
                     </button>
                 </div>
             </div>
-            <button @click="activeTab = 'search'" class="p-2 text-gray-600 bg-gray-50 rounded-full hover:bg-gray-100 border border-gray-200">
+            <button @click="activeTab = 'home'; $nextTick(() => $refs.mobileMenuSearch?.focus())" class="p-2 text-gray-600 bg-gray-50 rounded-full hover:bg-gray-100 border border-gray-200">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
             </button>
         </div>
@@ -94,7 +94,7 @@
             
             <div class="flex items-center gap-4" x-show="activeTab === 'home'">
                 <div class="relative">
-                    <input type="text" placeholder="Cari menu..." class="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 w-64 transition-all">
+                    <input type="text" x-model.debounce.150ms="searchQuery" placeholder="Cari menu..." class="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 w-64 transition-all">
                     <svg class="w-4 h-4 text-gray-400 absolute left-4 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
             </div>
@@ -132,6 +132,10 @@
 
                     <!-- Categories -->
                     <div class="px-4 md:px-0 mb-6 md:mb-8">
+                        <div class="relative mb-4 md:hidden">
+                            <input x-ref="mobileMenuSearch" type="text" x-model.debounce.150ms="searchQuery" placeholder="Cari menu..." class="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm font-semibold shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
+                            <svg class="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
                         <div class="flex items-center justify-between mb-3 md:mb-4">
                             <h3 class="font-bold text-gray-900 text-lg md:text-xl">Kategori Menu</h3>
                         </div>
@@ -316,15 +320,21 @@
                                 </div>
                             </div>
 
-                            <!-- QRIS Payment Mockup -->
+                            <!-- QRIS Payment -->
                             <div x-show="order.payment_method === 'qris' && order.payment_status === 'pending'" class="bg-gradient-to-b from-blue-50 to-white border border-blue-100 rounded-2xl p-6 text-center mb-6 shadow-sm">
                                 <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-100 text-blue-600 rounded-full mb-3">
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
                                 </div>
                                 <h4 class="font-black text-lg text-gray-900 mb-1">Menunggu Pembayaran QRIS</h4>
-                                <p class="text-sm text-gray-600 mb-5 max-w-sm mx-auto">Silakan scan kode QRIS di bawah ini menggunakan aplikasi e-Wallet atau Mobile Banking Anda.</p>
-                                <div class="w-48 h-48 bg-white mx-auto p-3 rounded-2xl border-2 border-dashed border-blue-200 shadow-sm flex items-center justify-center">
-                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=QRIS_MOCK_PAYMENT_URL_FOR_ORDER_123" class="w-full h-full opacity-90 mix-blend-multiply">
+                                <p class="text-sm text-gray-600 mb-5 max-w-sm mx-auto">Selesaikan pembayaran memakai instruksi dari payment gateway untuk pesanan ini.</p>
+                                <div x-show="paymentQrImage(order)" class="w-48 h-48 bg-white mx-auto p-3 rounded-2xl border-2 border-dashed border-blue-200 shadow-sm flex items-center justify-center">
+                                    <img :src="paymentQrImage(order)" class="w-full h-full opacity-90 mix-blend-multiply" alt="QR pembayaran">
+                                </div>
+                                <a x-show="paymentUrl(order)" :href="paymentUrl(order)" target="_blank" rel="noopener" class="mt-4 inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700">
+                                    Buka Pembayaran
+                                </a>
+                                <div x-show="!paymentQrImage(order) && !paymentUrl(order)" class="rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm font-bold text-yellow-700">
+                                    Instruksi pembayaran belum tersedia. Coba muat ulang pesanan.
                                 </div>
                                 <div class="mt-5">
                                     <span class="text-sm text-gray-500 font-medium">Total Pembayaran</span>
@@ -447,6 +457,15 @@
                                         <span class="font-bold text-gray-900 text-lg">Riwayat Pesanan</span>
                                     </div>
                                     <svg class="w-5 h-5 text-gray-300 group-hover:text-blue-500 transition-colors group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
+                                </button>
+                                <button @click="enablePushNotifications()" class="w-full flex items-center justify-between p-5 border-b border-gray-50 hover:bg-gray-50 transition-colors group">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-transform">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 01-6 0"></path></svg>
+                                        </div>
+                                        <span class="font-bold text-gray-900 text-lg">Aktifkan Notifikasi</span>
+                                    </div>
+                                    <span class="text-sm font-black" :class="pushSubscribed ? 'text-green-600' : 'text-gray-400'" x-text="pushSubscribed ? 'Aktif' : 'Nonaktif'"></span>
                                 </button>
                                 <button @click="logoutCustomer()" class="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors group">
                                     <div class="flex items-center gap-4">
@@ -977,6 +996,7 @@ function customerApp() {
         activePromos: [],
         activePromo: null,
         selectedCategory: null,
+        searchQuery: '',
         
         // Detail View
         selectedMenu: null,
@@ -1026,6 +1046,8 @@ function customerApp() {
         authMode: 'login',
         authLoading: false,
         authError: '',
+        pushSubscribed: false,
+        customerChannel: null,
         authForm: {
             name: '',
             email: '',
@@ -1102,6 +1124,85 @@ function customerApp() {
                 ...headers,
                 ...(this.authToken ? { 'Authorization': 'Bearer ' + this.authToken } : {})
             };
+        },
+
+        setCustomerAuthToken(token) {
+            this.authToken = token;
+            window.restoAuthToken = token || null;
+
+            if (token) {
+                localStorage.setItem('customer_token', token);
+            } else {
+                localStorage.removeItem('customer_token');
+            }
+
+            this.syncEchoAuthToken();
+        },
+
+        syncEchoAuthToken() {
+            const headers = {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                ...(this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {})
+            };
+
+            if (window.Echo?.connector?.options?.auth) {
+                window.Echo.connector.options.auth.headers = headers;
+            }
+
+            if (window.Echo?.connector?.pusher?.config?.auth) {
+                window.Echo.connector.pusher.config.auth.headers = headers;
+            }
+        },
+
+        startCustomerRealtime() {
+            if (!window.Echo || !this.user?.id || this.customerChannel === this.user.id) return;
+
+            this.stopCustomerRealtime();
+            this.syncEchoAuthToken();
+            this.customerChannel = this.user.id;
+
+            window.Echo.private(`customer.${this.user.id}`)
+                .listen('.order.status.updated', (event) => {
+                    if (event.order) {
+                        this.upsertActiveOrder(event.order);
+                    }
+                })
+                .listen('.reservation.updated', (event) => {
+                    if (event.reservation) {
+                        this.upsertReservation(event.reservation);
+                    }
+                });
+        },
+
+        stopCustomerRealtime() {
+            if (!window.Echo || !this.customerChannel) return;
+
+            window.Echo.leave(`customer.${this.customerChannel}`);
+            this.customerChannel = null;
+        },
+
+        upsertActiveOrder(order) {
+            const index = this.activeOrders.findIndex(item => item.id === order.id);
+            const merged = index === -1 ? order : { ...this.activeOrders[index], ...order };
+
+            if (this.isClosedCustomerOrder(merged)) {
+                if (index !== -1) this.activeOrders.splice(index, 1);
+            } else if (index === -1) {
+                this.activeOrders.unshift(merged);
+            } else {
+                this.activeOrders[index] = merged;
+            }
+
+            this.saveActiveOrders();
+        },
+
+        upsertReservation(reservation) {
+            const index = this.reservations.findIndex(item => item.id === reservation.id);
+            if (index === -1) {
+                this.reservations.unshift(reservation);
+            } else {
+                this.reservations[index] = { ...this.reservations[index], ...reservation };
+            }
         },
 
         async fetchBillingSettings() {
@@ -1232,6 +1333,8 @@ function customerApp() {
                 }
 
                 this.user = user;
+                this.startCustomerRealtime();
+                this.checkPushSubscription();
                 await this.refreshLoyaltyBalance();
                 await this.fetchReservations();
                 await this.fetchCustomerOrders();
@@ -1254,6 +1357,65 @@ function customerApp() {
                 }
             } catch (e) {
                 console.error('Gagal mengambil saldo poin', e);
+            }
+        },
+
+        async checkPushSubscription() {
+            if (!('serviceWorker' in navigator) || !window.swRegistration) return;
+
+            try {
+                const subscription = await window.swRegistration.pushManager.getSubscription();
+                this.pushSubscribed = Boolean(subscription);
+            } catch (e) {
+                console.error('Gagal mengecek subscription notifikasi', e);
+            }
+        },
+
+        async enablePushNotifications() {
+            if (!this.authToken || !this.user) {
+                this.openAuthModal('login');
+                return;
+            }
+
+            if (!window.subscribeToPushNotifications) {
+                this.showNotice({
+                    title: 'Notifikasi belum tersedia',
+                    message: 'Browser belum siap menerima push notification. Coba muat ulang halaman.',
+                    variant: 'danger'
+                });
+                return;
+            }
+
+            try {
+                const keyRes = await fetch('/api/push/vapid-public-key', {
+                    headers: { 'Accept': 'application/json' }
+                });
+                const keyJson = await keyRes.json();
+                const publicKey = keyJson.public_key || '';
+
+                if (!publicKey) {
+                    this.showNotice({
+                        title: 'Konfigurasi notifikasi belum lengkap',
+                        message: 'VAPID public key belum diatur di server.',
+                        variant: 'danger'
+                    });
+                    return;
+                }
+
+                const subscription = await window.subscribeToPushNotifications(publicKey);
+                this.pushSubscribed = Boolean(subscription);
+                this.showNotice({
+                    title: this.pushSubscribed ? 'Notifikasi aktif' : 'Notifikasi tidak aktif',
+                    message: this.pushSubscribed ? 'Update pesanan bisa dikirim ke perangkat ini.' : 'Izin notifikasi ditolak atau browser tidak mendukung.',
+                    variant: this.pushSubscribed ? 'success' : 'info'
+                });
+            } catch (e) {
+                console.error('Gagal mengaktifkan notifikasi', e);
+                this.showNotice({
+                    title: 'Notifikasi gagal diaktifkan',
+                    message: 'Tidak bisa menyimpan subscription notifikasi.',
+                    variant: 'danger'
+                });
             }
         },
 
@@ -1312,13 +1474,14 @@ function customerApp() {
                     return;
                 }
 
-                this.authToken = json.access_token;
-                localStorage.setItem('customer_token', this.authToken);
+                this.setCustomerAuthToken(json.access_token);
                 this.user = {
                     ...json.user,
                     poin: json.user.poin ?? 0
                 };
                 this.closeAuthModal();
+                this.startCustomerRealtime();
+                this.checkPushSubscription();
                 await this.refreshLoyaltyBalance();
                 await this.fetchReservations();
                 await this.fetchCustomerOrders();
@@ -1356,11 +1519,12 @@ function customerApp() {
         },
 
         clearCustomerSession() {
+            this.stopCustomerRealtime();
             this.user = null;
-            this.authToken = null;
+            this.setCustomerAuthToken(null);
             this.reservations = [];
+            this.pushSubscribed = false;
             this.clearTableSelection();
-            localStorage.removeItem('customer_token');
         },
 
         saveActiveOrders() {
@@ -1464,11 +1628,53 @@ function customerApp() {
                     const json = await res.json();
                     this.activeOrders = this.filterActiveOrders(json.data || []);
                     this.saveActiveOrders();
+                    this.loadPaymentInstructionsForPendingOrders();
                 }
             } catch (e) {
                 console.error('Gagal mengambil riwayat pesanan', e);
             } finally {
                 this.ordersLoading = false;
+            }
+        },
+
+        async loadPaymentInstructionsForPendingOrders() {
+            if (!this.authToken || !this.user) return;
+
+            const pendingOrders = this.activeOrders.filter(order => {
+                return order.payment_method === 'qris'
+                    && order.payment_status === 'pending'
+                    && !this.paymentUrl(order)
+                    && !this.paymentInstruction(order).qris_url;
+            });
+
+            await Promise.all(pendingOrders.map(order => this.refreshPaymentInstruction(order)));
+        },
+
+        async refreshPaymentInstruction(order) {
+            try {
+                const res = await fetch(`/api/customer/orders/${order.id}/payment/initiate`, {
+                    method: 'POST',
+                    headers: this.authHeaders({
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }),
+                    body: JSON.stringify({ payment_method: order.payment_method || 'qris' })
+                });
+
+                if (!res.ok) return;
+
+                const json = await res.json();
+                const index = this.activeOrders.findIndex(item => item.id === order.id);
+                if (index === -1) return;
+
+                this.activeOrders[index] = {
+                    ...this.activeOrders[index],
+                    payment_method: json.data?.payment_method || this.activeOrders[index].payment_method,
+                    payment_instruction: json.data || {}
+                };
+                this.saveActiveOrders();
+            } catch (e) {
+                console.error('Gagal memuat instruksi pembayaran', e);
             }
         },
 
@@ -1749,8 +1955,36 @@ function customerApp() {
         },
 
         get filteredMenus() {
-            if (!this.selectedCategory) return this.menus;
-            return this.menus.filter(m => m.category_id === this.selectedCategory);
+            const query = this.normalizeSearch(this.searchQuery);
+
+            return this.menus.filter(menu => {
+                const matchesCategory = !this.selectedCategory || menu.category_id === this.selectedCategory;
+                const searchable = this.normalizeSearch(`${menu.name || ''} ${menu.description || ''}`);
+                const matchesSearch = !query || searchable.includes(query);
+
+                return matchesCategory && matchesSearch;
+            });
+        },
+
+        normalizeSearch(value) {
+            return String(value || '').trim().toLowerCase();
+        },
+
+        paymentInstruction(order) {
+            return order?.payment_instruction || {};
+        },
+
+        paymentUrl(order) {
+            const instruction = this.paymentInstruction(order);
+            return instruction.redirect_url || instruction.payment_url || '';
+        },
+
+        paymentQrImage(order) {
+            const instruction = this.paymentInstruction(order);
+            if (instruction.qris_url) return instruction.qris_url;
+
+            const url = this.paymentUrl(order);
+            return url ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}` : '';
         },
 
         selectCategory(id) {
@@ -2047,6 +2281,16 @@ function customerApp() {
 
         async checkout() {
             this.hydrateStoredTable();
+
+            if (!this.authToken || !this.user) {
+                this.showNotice({
+                    title: 'Login diperlukan',
+                    message: 'Masuk atau daftar akun customer sebelum membuat pesanan.',
+                    variant: 'info'
+                });
+                this.openAuthModal('login');
+                return;
+            }
 
             if(!this.tableId) {
                 this.showNotice({

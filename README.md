@@ -1,245 +1,191 @@
-# RestoApp — Sistem Manajemen Restoran
+# RestoApp - Sistem Manajemen Restoran
 
-[![Tests](https://img.shields.io/badge/tests-455%20passed-brightgreen)]()
-[![Laravel](https://img.shields.io/badge/Laravel-12.x-red)]()
-[![PHP](https://img.shields.io/badge/PHP-8.3-blue)]()
+[![Laravel](https://img.shields.io/badge/Laravel-13.x-red)]()
+[![PHP](https://img.shields.io/badge/PHP-8.2%2B-blue)]()
 
-Aplikasi restoran full-stack dengan **Admin Dashboard**, **Customer PWA**, dan **Kitchen Display System (KDS)** yang terintegrasi secara real-time.
+Aplikasi restoran full-stack dengan Customer PWA, Admin Dashboard, dan Kitchen Display System (KDS). Backend memakai Laravel API, Sanctum, Spatie Permission, Reverb/WebSocket, MySQL, dan queue worker.
 
----
+## Arsitektur
 
-## 🏗️ Arsitektur
-
-```
-┌──────────────────┐   ┌──────────────────┐   ┌──────────────────┐
-│  Customer PWA    │   │  Admin Dashboard │   │  Kitchen Display │
-│  (Alpine.js)     │   │  (Alpine.js)     │   │  (Alpine.js)     │
-└────────┬─────────┘   └────────┬─────────┘   └────────┬─────────┘
-         │                      │                       │
-         └──────────┬───────────┘───────────────────────┘
-                    ▼
-         ┌──────────────────┐
-         │  Laravel API     │ ◄── Sanctum Auth + RBAC (Spatie)
-         │  (REST + WS)     │ ◄── Laravel Reverb (WebSocket)
-         └────────┬─────────┘
-                  ▼
-         ┌──────────────────┐
-         │  MySQL + Redis   │
-         └──────────────────┘
+```text
+Customer PWA     Admin Dashboard     Kitchen Display
+     |                 |                   |
+     +-----------------+-------------------+
+                       |
+                 Laravel API
+          Sanctum Auth + RBAC + Reverb
+                       |
+                  MySQL + Redis
 ```
 
-## ✨ Fitur Utama
+## Fitur Utama
 
 ### Customer PWA (`/app`)
-- 🍕 **Browse Menu** — Filter kategori, pencarian, detail + varian
-- 🛒 **Keranjang & Checkout** — Tambah/hapus item, voucher, QRIS/Cash
-- 📊 **Tracking Pesanan** — Progress bar real-time via WebSocket
-- ⭐ **Rating & Review** — Rating 1–5 bintang per pesanan
-- 🎁 **Loyalty Points** — Akumulasi & penukaran poin otomatis
-- 📅 **Reservasi Meja** — Booking meja dengan pilihan tanggal/waktu
-- 📱 **Installable PWA** — Service Worker, offline support, push notifications
+
+- Browse menu dengan kategori, pencarian, detail menu, dan varian.
+- Keranjang dan checkout dengan voucher, cash, QRIS, dan card.
+- Order customer wajib login dengan role `customer`.
+- Tracking pesanan dengan polling fallback dan listener realtime channel customer saat Reverb aktif.
+- Rating dan review untuk order yang sudah disajikan.
+- Loyalty points dan penukaran poin.
+- Reservasi meja dengan status pending, confirmed, dan cancelled.
+- PWA installable, service worker, offline asset cache, dan Web Push notification.
 
 ### Admin Dashboard (`/admin`)
-- 📈 **Dashboard** — Metrik harian (revenue, pesanan, pelanggan, stok kritis)
-- 📋 **Manajemen Menu** — CRUD menu, kategori drag-and-drop, varian
-- 🪑 **Manajemen Meja** — Grid meja, QR code generator, status real-time
-- 📦 **Manajemen Stok** — Bahan baku, auto-deduct, alert stok kritis
-- 👥 **Manajemen Karyawan** — CRUD staff, role assignment
-- 🔔 **Pesanan Live** — Real-time order board via Laravel Echo
-- 🎫 **Promo & Voucher** — Kode diskon, periode, kuota
-- 📊 **Laporan & Analitik** — Export Excel/PDF, grafik hourly revenue
-- 📅 **Reservasi** — Konfirmasi/tolak booking
-- ⚙️ **Pengaturan Sistem** — Pajak, service charge, konversi poin
+
+- Dashboard metrik harian.
+- CRUD menu, kategori, varian, meja, stok, supplier, staff, promo, reservasi, dan pengaturan.
+- Live order board via Laravel Echo/Reverb.
+- Laporan penjualan dan stok dengan export Excel/PDF.
+- Kasir dan cetak struk via browser atau print bridge lokal.
 
 ### Kitchen Display System (`/kds`)
-- 🧑‍🍳 **Antrean Kanban** — Kartu pesanan horizontal scroll
-- ⏱️ **Timer Cerdas** — Hijau/Kuning/Merah berdasarkan waktu tunggu
-- ✅ **Ceklis per Item** — Tap untuk mencoret item selesai
-- 🔊 **Notifikasi Suara** — Beep otomatis saat pesanan baru masuk
-- 📡 **WebSocket Real-time** — Sinkron dengan Admin & Customer
 
----
+- Board pesanan dapur.
+- Timer warna berdasarkan waktu tunggu.
+- Checklist item lokal di UI KDS.
+- Notifikasi suara saat order baru masuk.
+- Update status order melalui API staff.
 
-## 🚀 Quick Start
+## Quick Start
 
-### Prerequisites
-- PHP 8.3+
+### Prasyarat
+
+- PHP 8.2+
 - Composer 2.x
-- Node.js 20+ & npm
+- Node.js 20+ dan npm
 - MySQL 8.0+
-- Redis (optional, untuk caching & queue)
+- Redis opsional untuk cache, queue, dan broadcast
 
-### Installation
+### Instalasi
 
 ```bash
-# 1. Clone & install dependencies
-git clone https://github.com/your-org/resto.git
-cd resto
 composer install
 npm install
-
-# 2. Environment setup
 cp .env.example .env
 php artisan key:generate
-
-# 3. Configure database in .env
-# DB_DATABASE=resto_app
-# DB_USERNAME=root
-# DB_PASSWORD=
-
-# 4. Run migrations & seeders
 php artisan migrate
 php artisan db:seed
-
-# 5. Build frontend
-npm run dev    # Development
-npm run build  # Production
-
-# 6. Start server
+npm run dev
 php artisan serve
+```
 
-# 7. (Optional) Start WebSocket server
+Opsional untuk realtime dan background job:
+
+```bash
 php artisan reverb:start
-
-# 8. (Optional) Start queue worker
 php artisan queue:work
 ```
 
-### Default Accounts (from seeder)
+### Default Accounts
+
 | Role | Email | Password |
-|------|-------|----------|
+| --- | --- | --- |
 | Admin | admin@resto.app | password |
 | Chef | chef@resto.app | password |
 | Waiter | waiter@resto.app | password |
 | Customer | customer@resto.app | password |
 
----
+Catatan: beberapa seeder/demo lama juga memakai domain `restoapp.com`. Cek `akun.txt` atau seeder jika login demo berbeda.
 
-## 🧪 Testing
+## API Ringkas
 
-```bash
-# Run all tests (unit + feature + property-based)
-php artisan test
+| Group | Method | Endpoint | Auth |
+| --- | --- | --- | --- |
+| Auth | POST | `/api/auth/register` | Public |
+| Auth | POST | `/api/auth/login` | Public |
+| Auth | POST | `/api/auth/logout` | Bearer |
+| Customer | GET | `/api/customer/menus` | Public |
+| Customer | GET | `/api/customer/categories` | Public |
+| Customer | GET | `/api/customer/tables` | Public |
+| Customer | GET | `/api/customer/orders/{id}?table_id=...` | Public tracking |
+| Customer | POST | `/api/customer/orders` | Customer |
+| Customer | POST | `/api/customer/orders/{id}/payment/initiate` | Customer |
+| Customer | POST | `/api/customer/orders/{id}/rating` | Customer |
+| Customer | GET/POST | `/api/customer/loyalty/*` | Customer |
+| Customer | GET/POST/DELETE | `/api/customer/reservations` | Customer |
+| Staff | GET | `/api/staff/orders` | Waiter/Chef/Admin |
+| Staff | PATCH | `/api/staff/orders/{id}/status` | Waiter/Chef/Admin |
+| Staff | GET | `/api/staff/kds` | Chef/Admin |
+| Admin | CRUD | `/api/admin/menus` | Admin |
+| Admin | CRUD | `/api/admin/categories` | Admin |
+| Admin | CRUD | `/api/admin/tables` | Admin |
+| Admin | CRUD | `/api/admin/inventory` | Admin |
+| Admin | CRUD | `/api/admin/promos` | Admin |
+| Admin | GET | `/api/admin/reports/*` | Admin |
+| Admin | GET/POST | `/api/admin/settings` | Admin |
 
-# Run specific test groups
-php artisan test --filter PropertyBasedTest
-php artisan test --filter OrderFlowTest
-php artisan test --filter StockManagerTest
-```
+Postman collection tersedia di:
 
-**Test Coverage:**
-- 460+ test methods
-- 1580+ assertions
-- Property-Based Tests (Eris) — 14 properties, 230+ assertions
-
----
-
-## 📡 API Documentation
-
-Postman Collection tersedia di:
-```
+```text
 docs/RestoApp_API.postman_collection.json
 ```
 
-Import ke Postman → Set variable `base_url` → Login → Copy `access_token` ke variable `token`.
+## Web Push
 
-### Endpoint Overview
+Web Push memakai `minishlink/web-push`. Pastikan VAPID key di `.env` sudah diisi:
 
-| Group | Method | Endpoint | Auth |
-|-------|--------|----------|------|
-| **Auth** | POST | `/api/auth/register` | Public |
-| | POST | `/api/auth/login` | Public |
-| | POST | `/api/auth/logout` | Bearer |
-| **Customer** | GET | `/api/customer/menus` | Customer |
-| | POST | `/api/customer/orders` | Customer |
-| | POST | `/api/customer/orders/{id}/rating` | Customer |
-| | GET/POST | `/api/customer/loyalty/*` | Customer |
-| | GET/POST | `/api/customer/reservations` | Customer |
-| **Staff** | GET | `/api/staff/orders` | Waiter/Chef/Admin |
-| | PATCH | `/api/staff/orders/{id}/status` | Waiter/Chef/Admin |
-| | GET | `/api/staff/kds` | Chef/Admin |
-| **Admin** | CRUD | `/api/admin/menus` | Admin |
-| | CRUD | `/api/admin/categories` | Admin |
-| | CRUD | `/api/admin/tables` | Admin |
-| | CRUD | `/api/admin/inventory` | Admin |
-| | CRUD | `/api/admin/promos` | Admin |
-| | GET | `/api/admin/reports/*` | Admin |
-| | GET/POST | `/api/admin/settings` | Admin |
+```env
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+```
 
----
+Customer perlu login, membuka profil, lalu mengaktifkan notifikasi dari tombol di aplikasi.
 
-## 🏭 Production Deployment
+## Testing
 
 ```bash
-# Deploy script
+php artisan test
+php artisan test --filter OrderManagerTest
+php artisan test --filter PaymentGatewayTest
+php artisan test --filter OrderFlowTest
+```
+
+Di Windows, dependency Horizon dapat membutuhkan `ext-pcntl` dan `ext-posix` saat operasi Composer. Untuk update dependency lokal Windows, gunakan ignore platform requirement hanya jika paham risikonya.
+
+## Deployment
+
+```bash
 bash deploy/deploy.sh
-
-# Supervisor config (queue + reverb)
-sudo cp deploy/supervisor.conf /etc/supervisor/conf.d/resto.conf
-sudo supervisorctl reread && sudo supervisorctl update
-
-# Nginx config
-sudo cp deploy/nginx.conf /etc/nginx/sites-available/resto.app
-sudo ln -s /etc/nginx/sites-available/resto.app /etc/nginx/sites-enabled/
-sudo certbot --nginx -d resto.app
-sudo systemctl reload nginx
+php artisan reverb:start
+php artisan queue:work
 ```
 
-### HTTPS (required for PWA)
-```bash
-sudo certbot --nginx -d resto.app -d www.resto.app
+Konfigurasi referensi tersedia di:
+
+- `deploy/nginx.conf`
+- `deploy/supervisor.conf`
+- `deploy/deploy.sh`
+
+HTTPS wajib untuk PWA, Web Push, dan service worker di production.
+
+## Security
+
+- Auth API memakai Laravel Sanctum.
+- RBAC memakai Spatie Permission.
+- Customer order dan payment initiate membutuhkan role `customer`.
+- Staff/admin endpoint diproteksi role middleware.
+- Payment webhook memverifikasi signature Midtrans.
+- Account lockout aktif setelah 5 percobaan login gagal.
+- Rate limit diterapkan pada create order dan payment initiate.
+
+## Project Structure
+
+```text
+app/                    Controllers, Models, Services, Events, Jobs
+resources/views/         Admin, Customer, KDS, layouts, emails, reports
+routes/api.php           REST API routes
+routes/web.php           Web routes
+routes/channels.php      Broadcast channel authorization
+database/migrations/     Database schema
+database/seeders/        Demo data and roles
+tests/                   Feature, unit, and property tests
+public/manifest.json     PWA manifest
+public/sw.js             Service worker
+deploy/                  Deployment configs
+docs/                    API/security documentation
 ```
 
----
+## License
 
-## 🔒 Security
-
-- ✅ **CSRF Protection** — Sanctum token-based (API), web middleware (forms)
-- ✅ **SQL Injection** — Eloquent ORM parameterized queries
-- ✅ **XSS** — Blade auto-escaping (`{{ }}`) + Content-Security-Policy header
-- ✅ **RBAC** — Spatie Permission: customer, waiter, chef, admin
-- ✅ **Rate Limiting** — Laravel throttle middleware on auth routes
-- ✅ **Account Locking** — Auto-lock after 5 failed login attempts (15 min)
-- ✅ **Webhook Signature** — Midtrans signature verification on payment callback
-- ✅ **CORS** — Configured via `config/cors.php`
-- ✅ **Security Headers** — X-Frame-Options, X-Content-Type-Options, HSTS (Nginx)
-
----
-
-## 📁 Project Structure
-
-```
-resto/
-├── app/
-│   ├── Http/Controllers/    # API & Web controllers
-│   ├── Models/              # Eloquent models
-│   ├── Services/            # Business logic (OrderService, StockService, etc.)
-│   ├── Events/              # WebSocket events
-│   └── Jobs/                # Queue jobs (ExportReportJob)
-├── resources/views/
-│   ├── admin/               # Admin Dashboard views (Alpine.js)
-│   ├── customer/            # Customer PWA views (Alpine.js SPA)
-│   ├── kds/                 # Kitchen Display System views
-│   └── layouts/             # Blade layouts (admin, customer, kds)
-├── routes/
-│   ├── api.php              # REST API routes
-│   └── web.php              # Web routes (admin, customer, kds)
-├── tests/
-│   ├── Feature/             # Feature + Property-Based Tests
-│   └── Unit/                # Unit tests
-├── deploy/                  # Deployment configs
-│   ├── deploy.sh            # Auto-deploy script
-│   ├── supervisor.conf      # Queue + Reverb supervisor
-│   └── nginx.conf           # Nginx + HTTPS + WSS
-├── docs/                    # API documentation
-│   └── RestoApp_API.postman_collection.json
-└── public/
-    ├── manifest.json        # PWA manifest
-    └── sw.js                # Service Worker
-```
-
----
-
-## 📜 License
-
-MIT License — Free to use, modify, and distribute.
+MIT License.

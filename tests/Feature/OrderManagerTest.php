@@ -175,7 +175,8 @@ class OrderManagerTest extends TestCase
     {
         Event::fake([OrderCreated::class]);
 
-        $createResponse = $this->postJson('/api/customer/orders', $this->validOrderPayload(2));
+        $createResponse = $this->withHeaders($this->customerHeaders())
+            ->postJson('/api/customer/orders', $this->validOrderPayload(2));
 
         $createResponse->assertStatus(201);
         $orderId = $createResponse->json('data.id');
@@ -192,7 +193,8 @@ class OrderManagerTest extends TestCase
     {
         Event::fake([OrderCreated::class]);
 
-        $createResponse = $this->postJson('/api/customer/orders', $this->validOrderPayload(2));
+        $createResponse = $this->withHeaders($this->customerHeaders())
+            ->postJson('/api/customer/orders', $this->validOrderPayload(2));
 
         $createResponse->assertStatus(201);
         $orderId = $createResponse->json('data.id');
@@ -200,6 +202,14 @@ class OrderManagerTest extends TestCase
         $response = $this->getJson("/api/customer/orders/{$orderId}?table_id=999999");
 
         $response->assertStatus(404);
+    }
+
+    #[Test]
+    public function test_guest_cannot_create_order(): void
+    {
+        $response = $this->postJson('/api/customer/orders', $this->validOrderPayload(2));
+
+        $response->assertStatus(401);
     }
 
     #[Test]

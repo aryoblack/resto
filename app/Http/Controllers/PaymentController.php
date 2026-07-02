@@ -7,7 +7,6 @@ use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * PaymentController — HTTP layer for the Payment_Gateway module.
@@ -48,17 +47,7 @@ class PaymentController extends Controller
 
         $user = $request->user();
 
-        if (! $user && $request->bearerToken()) {
-            $accessToken = PersonalAccessToken::findToken($request->bearerToken());
-            $user = $accessToken?->tokenable;
-        }
-
-        if ($order->user_id && ! $user) {
-            return response()->json(['message' => 'Akses ditolak.'], 403);
-        }
-
-        // Ensure the order belongs to the authenticated customer
-        if ($user && $user->hasRole('customer') && $order->user_id !== $user->id) {
+        if (! $user || ! $user->hasRole('customer') || $order->user_id !== $user->id) {
             return response()->json(['message' => 'Akses ditolak.'], 403);
         }
 

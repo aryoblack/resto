@@ -105,9 +105,6 @@ Route::prefix('customer')->group(function () {
     Route::get('tables', [App\Http\Controllers\TableController::class, 'customerIndex']);
     Route::get('orders/{order}', [App\Http\Controllers\OrderController::class, 'customerShow'])
         ->name('customer.orders.show.public');
-    Route::post('orders', [App\Http\Controllers\OrderController::class, 'store']);
-    Route::post('orders/{order}/payment/initiate', [App\Http\Controllers\PaymentController::class, 'initiate'])
-        ->name('customer.payment.initiate.public');
 });
 
 /*
@@ -123,6 +120,13 @@ Route::middleware(['auth:sanctum', 'check.role:customer'])
             ->name('customer.push.subscribe');
         Route::delete('push-subscribe', [NotificationController::class, 'unsubscribe'])
             ->name('customer.push.unsubscribe');
+
+        Route::post('orders', [OrderController::class, 'store'])
+            ->middleware('throttle:20,1')
+            ->name('customer.orders.store');
+        Route::post('orders/{order}/payment/initiate', [PaymentController::class, 'initiate'])
+            ->middleware('throttle:30,1')
+            ->name('customer.payment.initiate');
 
         // Loyalty Engine — point balance, history, and redemption (task 11.1)
         Route::get('loyalty/balance', [LoyaltyController::class, 'balance'])

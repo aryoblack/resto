@@ -14,6 +14,16 @@
     
     <title>@yield('title', 'RestoApp')</title>
 
+    <script>
+        window.restoAuthToken = localStorage.getItem('customer_token') || null;
+        window.restoAuthHeaders = function(headers = {}) {
+            return {
+                ...headers,
+                ...(window.restoAuthToken ? { 'Authorization': 'Bearer ' + window.restoAuthToken } : {}),
+            };
+        };
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
