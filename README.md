@@ -81,12 +81,13 @@ php artisan queue:work
 
 | Role | Email | Password |
 | --- | --- | --- |
-| Admin | admin@resto.app | password |
-| Chef | chef@resto.app | password |
-| Waiter | waiter@resto.app | password |
-| Customer | customer@resto.app | password |
+| Admin | admin@restoapp.com | Admin@123456 |
+| Customer | customer@restoapp.com | Customer@123456 |
+| Waiter | waiter@restoapp.com | Waiter@123456 |
+| Kasir | kasir@restoapp.com | Kasir@123456 |
+| Chef | chef@restoapp.com | Chef@123456 |
 
-Catatan: beberapa seeder/demo lama juga memakai domain `restoapp.com`. Cek `akun.txt` atau seeder jika login demo berbeda.
+Catatan: akun Kasir memakai role `waiter`, sesuai `DemoUserSeeder`.
 
 ## API Ringkas
 
