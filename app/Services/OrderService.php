@@ -8,6 +8,7 @@ use App\Events\OrderUpdated;
 use App\Http\Requests\CreateOrderRequest;
 use App\Models\Menu;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Promo;
 use App\Models\SystemSetting;
 use App\Models\VoucherUsage;
@@ -175,17 +176,7 @@ class OrderService
      */
     public function addItems(Order $order, array $items): Order
     {
-        if (in_array($order->order_status, ['Disajikan', 'Dibatalkan'], true)) {
-            throw ValidationException::withMessages([
-                'order' => 'Pesanan yang sudah disajikan atau dibatalkan tidak bisa ditambah item.',
-            ]);
-        }
-
-        if ($order->payment_status === 'paid') {
-            throw ValidationException::withMessages([
-                'order' => 'Pesanan yang sudah lunas tidak bisa ditambah item. Buat tagihan baru untuk tambahan pesanan.',
-            ]);
-        }
+        $this->ensureOrderItemsCanBeChanged($order, 'ditambah item');
 
         $insufficientItems = $this->checkStock($items);
         if (! empty($insufficientItems)) {
@@ -198,17 +189,7 @@ class OrderService
         $order = DB::transaction(function () use ($order, $items) {
             $lockedOrder = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
 
-            if (in_array($lockedOrder->order_status, ['Disajikan', 'Dibatalkan'], true)) {
-                throw ValidationException::withMessages([
-                    'order' => 'Pesanan yang sudah disajikan atau dibatalkan tidak bisa ditambah item.',
-                ]);
-            }
-
-            if ($lockedOrder->payment_status === 'paid') {
-                throw ValidationException::withMessages([
-                    'order' => 'Pesanan yang sudah lunas tidak bisa ditambah item. Buat tagihan baru untuk tambahan pesanan.',
-                ]);
-            }
+            $this->ensureOrderItemsCanBeChanged($lockedOrder, 'ditambah item');
 
             $newOrderItemIds = [];
             foreach ($items as $item) {
@@ -252,6 +233,97 @@ class OrderService
         return $order;
     }
 
+    /**
+     * Update one item on an open order and recalculate the bill.
+     *
+     * @param  array{menu_id?: int, quantity?: int, variant_id?: int|null, variant_selected?: string|null, note?: string|null}  $data
+     */
+    public function updateItem(Order $order, OrderItem $orderItem, array $data): Order
+    {
+        $this->ensureOrderItemBelongsToOrder($order, $orderItem);
+        $this->ensureOrderItemsCanBeChanged($order, 'diubah');
+
+        $order = DB::transaction(function () use ($order, $orderItem, $data) {
+            $lockedOrder = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $this->ensureOrderItemsCanBeChanged($lockedOrder, 'diubah');
+
+            /** @var OrderItem $lockedItem */
+            $lockedItem = $lockedOrder->orderItems()->whereKey($orderItem->id)->lockForUpdate()->firstOrFail();
+            $nextMenuId = (int) ($data['menu_id'] ?? $lockedItem->menu_id);
+            $nextQuantity = (int) ($data['quantity'] ?? $lockedItem->quantity);
+
+            $menu = Menu::with('variants')->find($nextMenuId);
+            if (! $menu) {
+                throw ValidationException::withMessages([
+                    'menu_id' => 'Menu tidak ditemukan.',
+                ]);
+            }
+
+            $shouldReprice = array_key_exists('menu_id', $data)
+                || array_key_exists('variant_id', $data)
+                || array_key_exists('variant_selected', $data);
+
+            $nextItem = [
+                'menu_id' => $nextMenuId,
+                'quantity' => $nextQuantity,
+                'variant_id' => $data['variant_id'] ?? null,
+                'variant_selected' => $shouldReprice ? ($data['variant_selected'] ?? null) : $lockedItem->variant_selected,
+            ];
+            $insufficientItems = $this->checkStock([$nextItem]);
+            if (! empty($insufficientItems)) {
+                throw ValidationException::withMessages([
+                    'items' => 'Beberapa item tidak memiliki stok yang cukup.',
+                    'insufficient_items' => $insufficientItems,
+                ]);
+            }
+
+            $this->stockService->restoreStockForOrderItem($lockedItem);
+
+            $variant = $shouldReprice ? $this->resolveVariant($nextItem, $menu) : null;
+            $lockedItem->update([
+                'menu_id'          => $nextMenuId,
+                'quantity'         => $nextQuantity,
+                'variant_selected' => $shouldReprice
+                    ? ($variant?->variant_name ?? ($data['variant_selected'] ?? null))
+                    : $lockedItem->variant_selected,
+                'note'             => array_key_exists('note', $data) ? $data['note'] : $lockedItem->note,
+                'price_at_time'    => $shouldReprice ? $this->unitPrice($menu, $variant) : $lockedItem->price_at_time,
+            ]);
+
+            $lockedOrder->load('orderItems');
+            $this->stockService->deductStockForOrder($lockedOrder, [$lockedItem->id]);
+            $this->recalculateBill($lockedOrder);
+
+            return $lockedOrder;
+        });
+
+        return $this->freshUpdatedOrder($order);
+    }
+
+    public function deleteItem(Order $order, OrderItem $orderItem): Order
+    {
+        $this->ensureOrderItemBelongsToOrder($order, $orderItem);
+        $this->ensureOrderItemsCanBeChanged($order, 'dihapus');
+
+        $order = DB::transaction(function () use ($order, $orderItem) {
+            $lockedOrder = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $this->ensureOrderItemsCanBeChanged($lockedOrder, 'dihapus');
+
+            /** @var OrderItem $lockedItem */
+            $lockedItem = $lockedOrder->orderItems()->whereKey($orderItem->id)->lockForUpdate()->firstOrFail();
+
+            $this->stockService->restoreStockForOrderItem($lockedItem);
+            $lockedItem->delete();
+
+            $lockedOrder->load('orderItems');
+            $this->recalculateBill($lockedOrder);
+
+            return $lockedOrder;
+        });
+
+        return $this->freshUpdatedOrder($order);
+    }
+
     private function findOpenTableBill(CreateOrderRequest $request): ?Order
     {
         if ($request->input('order_type', 'dine_in') !== 'dine_in' || ! $request->filled('table_id')) {
@@ -265,6 +337,66 @@ class OrderService
             ->lockForUpdate()
             ->oldest()
             ->first();
+    }
+
+    private function ensureOrderItemsCanBeChanged(Order $order, string $action): void
+    {
+        if (in_array($order->order_status, ['Disajikan', 'Dibatalkan'], true)) {
+            throw ValidationException::withMessages([
+                'order' => "Pesanan yang sudah disajikan atau dibatalkan tidak bisa {$action}.",
+            ]);
+        }
+
+        if ($order->payment_status === 'paid') {
+            throw ValidationException::withMessages([
+                'order' => "Pesanan yang sudah lunas tidak bisa {$action}. Buat tagihan baru untuk perubahan pesanan.",
+            ]);
+        }
+    }
+
+    private function ensureOrderItemBelongsToOrder(Order $order, OrderItem $orderItem): void
+    {
+        if ((int) $orderItem->order_id !== (int) $order->id) {
+            throw ValidationException::withMessages([
+                'item' => 'Item tidak termasuk dalam pesanan ini.',
+            ]);
+        }
+    }
+
+    private function recalculateBill(Order $order): void
+    {
+        $order->load('orderItems');
+        $subtotal = $this->subtotalFromOrderItems($order->orderItems);
+        try {
+            $voucher = $this->resolveBillVoucher($order, $subtotal, $order->user_id, false);
+        } catch (ValidationException $e) {
+            if (! array_key_exists('voucher_code', $e->errors())) {
+                throw $e;
+            }
+
+            $voucher = ['code' => null, 'discount_amount' => 0.0];
+        }
+
+        $totals = $this->totalsFromSubtotal($subtotal, $voucher['discount_amount']);
+
+        $order->update([
+            'total_price'     => $totals['total_price'],
+            'tax_amount'      => $totals['tax_amount'],
+            'service_charge'  => $totals['service_charge'],
+            'discount_amount' => $totals['discount_amount'],
+            'voucher_code'    => $voucher['code'],
+        ]);
+    }
+
+    private function freshUpdatedOrder(Order $order): Order
+    {
+        $order = $order->fresh(['orderItems.menu', 'table', 'user', 'rating']);
+
+        $this->broadcastSafely(new OrderUpdated($order), 'Order update realtime broadcast failed.', [
+            'order_id' => $order->id,
+        ]);
+
+        return $order;
     }
 
     private function normalizeVoucherCode(mixed $code): ?string

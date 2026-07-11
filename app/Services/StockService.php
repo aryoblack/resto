@@ -6,6 +6,7 @@ use App\Events\StockCritical;
 use App\Models\Inventory;
 use App\Models\MenuIngredientMap;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\StockMovement;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -235,6 +236,38 @@ class StockService
                     createdBy: null,
                 );
             }
+        }
+    }
+
+    public function restoreStockForOrderItem(OrderItem $orderItem, ?int $quantity = null): void
+    {
+        $restoreQuantity = $quantity ?? (int) $orderItem->quantity;
+        if ($restoreQuantity <= 0) {
+            return;
+        }
+
+        $mappings = MenuIngredientMap::where('menu_id', $orderItem->menu_id)->get();
+
+        foreach ($mappings as $mapping) {
+            $totalRestore = (float) $mapping->quantity_used * $restoreQuantity;
+            if ($totalRestore <= 0) {
+                continue;
+            }
+
+            DB::transaction(function () use ($mapping, $totalRestore, $orderItem) {
+                /** @var Inventory $ingredient */
+                $ingredient = Inventory::lockForUpdate()->findOrFail($mapping->ingredient_id);
+                $ingredient->increment('current_stock', $totalRestore);
+
+                StockMovement::create([
+                    'ingredient_id'   => $mapping->ingredient_id,
+                    'quantity_change' => $totalRestore,
+                    'type'            => 'in',
+                    'note'            => "Restore stok dari perubahan pesanan #{$orderItem->order_id}",
+                    'order_id'        => $orderItem->order_id,
+                    'created_by'      => null,
+                ]);
+            });
         }
     }
 

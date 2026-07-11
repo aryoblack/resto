@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\CreateOrderRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -231,6 +232,34 @@ class OrderController extends Controller
 
         return response()->json([
             'message' => 'Item pesanan berhasil ditambahkan.',
+            'data'    => $this->formatOrder($order),
+        ]);
+    }
+
+    public function updateItem(Request $request, Order $order, OrderItem $orderItem): JsonResponse
+    {
+        $validated = $request->validate([
+            'menu_id'          => ['sometimes', 'required', 'integer', 'exists:menu,id'],
+            'quantity'         => ['sometimes', 'required', 'integer', 'min:1'],
+            'variant_id'       => ['nullable', 'integer', 'exists:variant,id'],
+            'variant_selected' => ['nullable', 'string', 'max:255'],
+            'note'             => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $order = $this->orderService->updateItem($order, $orderItem, $validated);
+
+        return response()->json([
+            'message' => 'Item pesanan berhasil diperbarui.',
+            'data'    => $this->formatOrder($order),
+        ]);
+    }
+
+    public function deleteItem(Order $order, OrderItem $orderItem): JsonResponse
+    {
+        $order = $this->orderService->deleteItem($order, $orderItem);
+
+        return response()->json([
+            'message' => 'Item pesanan berhasil dihapus.',
             'data'    => $this->formatOrder($order),
         ]);
     }

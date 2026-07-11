@@ -6,6 +6,7 @@ use PHPUnit\Framework\Attributes\Test;
 
 use App\Events\OrderCreated;
 use App\Events\OrderStatusUpdated;
+use App\Events\OrderUpdated;
 use App\Models\Category;
 use App\Models\Menu;
 use App\Models\Order;
@@ -936,6 +937,118 @@ class OrderManagerTest extends TestCase
             ->assertJsonPath('data.id', $order->id)
             ->assertJsonCount(1, 'data.items');
     }
+
+    #[Test]
+    public function test_waiter_can_update_open_order_item_and_recalculate_total(): void
+    {
+        Event::fake([OrderUpdated::class]);
+
+        $order = Order::create([
+            'user_id'        => $this->customer->id,
+            'table_id'       => $this->table->id,
+            'total_price'    => 23000,
+            'tax_amount'     => 2000,
+            'service_charge' => 1000,
+            'order_status'   => 'Diterima',
+            'payment_status' => 'pending',
+            'order_type'     => 'dine_in',
+        ]);
+
+        $item = OrderItem::create([
+            'order_id'      => $order->id,
+            'menu_id'       => $this->menu->id,
+            'quantity'      => 1,
+            'price_at_time' => 20000,
+        ]);
+
+        $response = $this->withHeaders($this->waiterHeaders())
+            ->patchJson("/api/staff/orders/{$order->id}/items/{$item->id}", [
+                'quantity' => 3,
+                'note'     => 'Tanpa pedas',
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.total_price', '69000.00')
+            ->assertJsonPath('data.items.0.quantity', 3)
+            ->assertJsonPath('data.items.0.note', 'Tanpa pedas');
+
+        $this->assertDatabaseHas('order_item', [
+            'id'       => $item->id,
+            'quantity' => 3,
+            'note'     => 'Tanpa pedas',
+        ]);
+        Event::assertDispatched(OrderUpdated::class);
+    }
+
+    #[Test]
+    public function test_waiter_can_delete_open_order_item_and_recalculate_total(): void
+    {
+        Event::fake([OrderUpdated::class]);
+
+        $order = Order::create([
+            'user_id'        => $this->customer->id,
+            'table_id'       => $this->table->id,
+            'total_price'    => 46000,
+            'tax_amount'     => 4000,
+            'service_charge' => 2000,
+            'order_status'   => 'Diterima',
+            'payment_status' => 'pending',
+            'order_type'     => 'dine_in',
+        ]);
+
+        $item = OrderItem::create([
+            'order_id'      => $order->id,
+            'menu_id'       => $this->menu->id,
+            'quantity'      => 2,
+            'price_at_time' => 20000,
+        ]);
+
+        $response = $this->withHeaders($this->waiterHeaders())
+            ->deleteJson("/api/staff/orders/{$order->id}/items/{$item->id}");
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.total_price', '0.00')
+            ->assertJsonCount(0, 'data.items');
+
+        $this->assertDatabaseMissing('order_item', ['id' => $item->id]);
+        Event::assertDispatched(OrderUpdated::class);
+    }
+
+    #[Test]
+    public function test_paid_order_item_cannot_be_changed(): void
+    {
+        $order = Order::create([
+            'user_id'        => $this->customer->id,
+            'table_id'       => $this->table->id,
+            'total_price'    => 23000,
+            'tax_amount'     => 2000,
+            'service_charge' => 1000,
+            'order_status'   => 'Diterima',
+            'payment_status' => 'paid',
+            'order_type'     => 'dine_in',
+        ]);
+
+        $item = OrderItem::create([
+            'order_id'      => $order->id,
+            'menu_id'       => $this->menu->id,
+            'quantity'      => 1,
+            'price_at_time' => 20000,
+        ]);
+
+        $response = $this->withHeaders($this->waiterHeaders())
+            ->patchJson("/api/staff/orders/{$order->id}/items/{$item->id}", [
+                'quantity' => 2,
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['order']);
+
+        $this->assertDatabaseHas('order_item', [
+            'id'       => $item->id,
+            'quantity' => 1,
+        ]);
+    }
+
     #[Test]
     public function test_customer_cannot_access_staff_orders(): void
     {

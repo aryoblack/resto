@@ -184,6 +184,10 @@ Route::middleware(['auth:sanctum', 'check.role:waiter,admin'])
 
         Route::post('/orders/{order}/items', [OrderController::class, 'addItems'])
             ->name('staff.orders.items.store');
+        Route::patch('/orders/{order}/items/{orderItem}', [OrderController::class, 'updateItem'])
+            ->name('staff.orders.items.update');
+        Route::delete('/orders/{order}/items/{orderItem}', [OrderController::class, 'deleteItem'])
+            ->name('staff.orders.items.destroy');
 
         Route::post('/orders/{order}/payment/confirm', [PaymentController::class, 'confirm'])
             ->name('staff.payment.confirm');

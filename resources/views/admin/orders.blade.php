@@ -92,6 +92,16 @@
                                         <div x-show="item.variant_selected" class="text-xs text-gray-500 mt-0.5" x-text="'Varian: ' + item.variant_selected"></div>
                                         <div x-show="item.note" class="text-xs text-red-500 italic mt-0.5" x-text="'Catatan: ' + item.note"></div>
                                     </div>
+                                    @if($canAddOrderItems)
+                                    <div x-show="canChangeOrderItems(order)" class="ml-2 flex flex-shrink-0 gap-1">
+                                        <button @click.stop="openEditItemModal(order, item)" class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition hover:bg-white hover:text-primary-700" title="Edit item">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.1" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"></path></svg>
+                                        </button>
+                                        <button @click.stop="deleteOrderItem(order, item)" :disabled="isUpdatingItem(item.id)" class="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition hover:bg-white hover:text-red-700 disabled:opacity-50" title="Hapus item">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.1" d="M6 7h12m-9 0V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0l-.7 12.1a2 2 0 01-2 1.9H8.7a2 2 0 01-2-1.9L6 7z"></path></svg>
+                                        </button>
+                                    </div>
+                                    @endif
                                 </li>
                             </template>
                         </ul>
@@ -245,6 +255,91 @@
         </section>
     </div>
 
+    <div x-show="editItemModalOpen" x-cloak @keydown.escape.window="closeEditItemModal()" class="fixed inset-0 z-[125] flex items-end justify-center bg-gray-900/60 p-0 backdrop-blur-sm sm:items-center sm:p-4" style="display: none;">
+        <div class="absolute inset-0" @click="closeEditItemModal()"></div>
+        <section x-show="editItemModalOpen"
+                 @click.stop
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="translate-y-6 opacity-0 sm:translate-y-0 sm:scale-95"
+                 x-transition:enter-end="translate-y-0 opacity-100 sm:scale-100"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="translate-y-0 opacity-100 sm:scale-100"
+                 x-transition:leave-end="translate-y-6 opacity-0 sm:translate-y-0 sm:scale-95"
+                 class="relative w-full max-w-xl overflow-hidden rounded-t-3xl bg-white shadow-2xl ring-1 ring-black/5 sm:rounded-3xl">
+            <div class="absolute inset-x-0 top-0 h-1 bg-primary-500"></div>
+            <div class="flex items-start justify-between gap-4 border-b border-gray-100 p-5">
+                <div class="min-w-0">
+                    <p class="text-xs font-black uppercase tracking-wider text-primary-600">Edit Item</p>
+                    <h3 class="mt-1 break-words text-xl font-black text-gray-900" x-text="editingItem?.menu?.name || editingItem?.menu_name || 'Menu'"></h3>
+                    <p class="mt-1 text-sm font-semibold text-gray-500">Ubah menu, jumlah, varian, atau catatan.</p>
+                </div>
+                <button @click="closeEditItemModal()" class="rounded-full bg-gray-100 p-2 text-gray-500 transition hover:bg-gray-200 hover:text-gray-900" aria-label="Tutup">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <form @submit.prevent="submitEditedItem()" class="p-5">
+                <div class="space-y-4">
+                    <div>
+                        <label class="mb-1 block text-sm font-black text-gray-900">Menu</label>
+                        <x-searchable-select
+                            model="editItemForm.menu_id"
+                            options="availableAdditionalMenus()"
+                            value="option.id"
+                            label="option.name + ' - ' + formatCurrency(option.price)"
+                            description="'Stok ' + option.stock + (option.category?.name ? ' - ' + option.category.name : '')"
+                            placeholder="Pilih menu"
+                            search-placeholder="Cari menu..."
+                            empty-text="Menu tidak ditemukan"
+                            on-select="editItemForm.variant_id = '';"
+                        />
+                    </div>
+
+                    <div x-show="selectedEditMenuVariants().length > 0">
+                        <label class="mb-1 block text-sm font-black text-gray-900">Varian</label>
+                        <x-searchable-select
+                            model="editItemForm.variant_id"
+                            options="selectedEditMenuVariants()"
+                            value="option.id"
+                            label="option.variant_name + (Number(option.extra_price || 0) > 0 ? ' +' + formatCurrency(option.extra_price || 0) : '')"
+                            placeholder="Regular"
+                            search-placeholder="Cari varian..."
+                            empty-text="Varian tidak ditemukan"
+                            :nullable="true"
+                            null-label="Regular"
+                        />
+                    </div>
+
+                    <div class="grid grid-cols-[8rem_minmax(0,1fr)] gap-3">
+                        <div>
+                            <label class="mb-1 block text-sm font-black text-gray-900">Jumlah</label>
+                            <input type="number" min="1" x-model.number="editItemForm.quantity" required class="block w-full rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold text-gray-900 focus:border-primary-500 focus:ring-primary-500">
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-black text-gray-900">Catatan</label>
+                            <input type="text" x-model="editItemForm.note" maxlength="500" placeholder="Opsional" class="block w-full rounded-xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900 focus:border-primary-500 focus:ring-primary-500">
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl bg-primary-50 p-4 ring-1 ring-primary-100">
+                        <div class="flex items-center justify-between gap-3 text-sm">
+                            <span class="font-bold text-primary-700">Estimasi item</span>
+                            <span class="text-lg font-black text-primary-700" x-text="formatCurrency(editItemTotal())"></span>
+                        </div>
+                        <p class="mt-1 text-xs font-semibold text-primary-700/80">Total tagihan akan dihitung ulang setelah disimpan.</p>
+                    </div>
+                </div>
+
+                <div class="mt-5 grid grid-cols-2 gap-3">
+                    <button type="button" @click="closeEditItemModal()" class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-black text-gray-700 transition hover:bg-gray-50">Batal</button>
+                    <button type="submit" :disabled="updatingItem || !editItemForm.menu_id" class="rounded-xl bg-primary-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-primary-500/20 transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60">
+                        <span x-text="updatingItem ? 'Menyimpan...' : 'Simpan Perubahan'"></span>
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
+
     <div x-show="detailModalOpen" x-cloak @keydown.escape.window="closeDetails()" class="fixed inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4" style="display: none; z-index: 120;">
         <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="closeDetails()"></div>
         <section x-show="detailModalOpen"
@@ -311,7 +406,19 @@
                                     <p x-show="item.note" class="mt-1 rounded-lg bg-red-50 px-2 py-1 text-xs font-semibold text-red-600" x-text="'Catatan: ' + item.note"></p>
                                     <p class="mt-2 text-xs font-semibold text-gray-500" x-text="formatCurrency(item.price_at_time || 0) + ' / item'"></p>
                                 </div>
-                                <div class="text-left text-sm font-black text-gray-900 sm:text-right" x-text="formatCurrency(item.subtotal || ((item.price_at_time || 0) * (item.quantity || 0)))"></div>
+                                <div class="flex items-center justify-between gap-2 sm:flex-col sm:items-end">
+                                    <div class="text-left text-sm font-black text-gray-900 sm:text-right" x-text="formatCurrency(item.subtotal || ((item.price_at_time || 0) * (item.quantity || 0)))"></div>
+                                    @if($canAddOrderItems)
+                                    <div x-show="canChangeOrderItems(selectedOrder)" class="flex gap-1">
+                                        <button @click.stop="openEditItemModal(selectedOrder, item)" class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition hover:bg-gray-50 hover:text-primary-700" title="Edit item">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.1" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"></path></svg>
+                                        </button>
+                                        <button @click.stop="deleteOrderItem(selectedOrder, item)" :disabled="isUpdatingItem(item.id)" class="flex h-8 w-8 items-center justify-center rounded-lg border border-red-100 text-red-500 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50" title="Hapus item">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.1" d="M6 7h12m-9 0V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0l-.7 12.1a2 2 0 01-2 1.9H8.7a2 2 0 01-2-1.9L6 7z"></path></svg>
+                                        </button>
+                                    </div>
+                                    @endif
+                                </div>
                             </div>
                         </template>
                     </div>
@@ -366,6 +473,12 @@ function orderManager() {
         addItemOrder: null,
         additionalMenus: [],
         addItemForm: { menu_id: '', variant_id: '', quantity: 1, note: '' },
+        editItemModalOpen: false,
+        editingItem: null,
+        editItemOrder: null,
+        updatingItem: false,
+        updatingItems: {},
+        editItemForm: { menu_id: '', variant_id: '', quantity: 1, note: '' },
         detailModalOpen: false,
         selectedOrder: null,
         detailCloseTimer: null,
@@ -383,47 +496,19 @@ function orderManager() {
                 window.Echo.private('orders')
                     .listen('.order.created', (e) => {
                         if (e.order) {
-                            const idx = this.orders.findIndex(o => o.id === e.order.id);
-                            if (idx !== -1) {
-                                this.orders[idx] = e.order;
-                                return;
-                            }
-
-                            if (this.statusFilter === '' || this.statusFilter === 'Diterima') {
-                                this.orders.unshift(e.order);
-                            }
+                            this.applyRealtimeOrder(e.order);
                         }
                     })
                     // Listen for status updates on existing orders
                     .listen('.order.status.updated', (e) => {
                         if (e.order) {
-                            const idx = this.orders.findIndex(o => o.id === e.order.id);
-                            if (idx !== -1) {
-                                // If it doesn't match filter anymore, remove it
-                                if(this.statusFilter && this.statusFilter !== e.order.order_status) {
-                                    this.orders.splice(idx, 1);
-                                } else {
-                                    this.orders[idx] = e.order;
-                                }
-                            } else if (this.statusFilter === '' || this.statusFilter === e.order.order_status) {
-                                // Add it to the list if it matches filter and wasn't there
-                                this.orders.unshift(e.order);
-                            }
+                            this.applyRealtimeOrder(e.order);
                         }
                     })
                     .listen('.order.updated', (e) => {
                         if (!e.order) return;
 
-                        const idx = this.orders.findIndex(o => o.id === e.order.id);
-                        if (idx !== -1) {
-                            this.orders[idx] = e.order;
-                        } else if (this.statusFilter === '' || this.statusFilter === e.order.order_status) {
-                            this.orders.unshift(e.order);
-                        }
-
-                        if (this.selectedOrder?.id === e.order.id) {
-                            this.selectedOrder = e.order;
-                        }
+                        this.applyRealtimeOrder(e.order);
                     });
             }
         },
@@ -489,6 +574,68 @@ function orderManager() {
             this.fetchOrders();
         },
 
+        statusRank(status) {
+            return {
+                Diterima: 10,
+                Diproses: 20,
+                Dimasak: 30,
+                Selesai: 40,
+                Disajikan: 50,
+                Dibatalkan: 60,
+            }[status] || 0;
+        },
+
+        shouldApplyIncomingOrder(existingOrder, incomingOrder) {
+            if (!existingOrder || !incomingOrder?.order_status) return true;
+            if (incomingOrder.order_status === 'Dibatalkan') return true;
+
+            const currentRank = this.statusRank(existingOrder.order_status);
+            const incomingRank = this.statusRank(incomingOrder.order_status);
+
+            if (currentRank && incomingRank && incomingRank < currentRank) return false;
+
+            if (existingOrder.updated_at && incomingOrder.updated_at) {
+                return new Date(incomingOrder.updated_at).getTime() >= new Date(existingOrder.updated_at).getTime();
+            }
+
+            return true;
+        },
+
+        mergeOrder(existingOrder, incomingOrder) {
+            if (!existingOrder) return incomingOrder;
+
+            return {
+                ...existingOrder,
+                ...incomingOrder,
+                items: incomingOrder.items || existingOrder.items || [],
+                table: incomingOrder.table || existingOrder.table || null,
+                user: incomingOrder.user || existingOrder.user || null,
+            };
+        },
+
+        applyRealtimeOrder(incomingOrder) {
+            const idx = this.orders.findIndex(o => o.id === incomingOrder.id);
+            const existingOrder = idx !== -1 ? this.orders[idx] : null;
+
+            if (!this.shouldApplyIncomingOrder(existingOrder, incomingOrder)) return;
+
+            const mergedOrder = this.mergeOrder(existingOrder, incomingOrder);
+
+            if (idx !== -1) {
+                if (this.statusFilter && this.statusFilter !== mergedOrder.order_status) {
+                    this.orders.splice(idx, 1);
+                } else {
+                    this.orders[idx] = mergedOrder;
+                }
+            } else if (this.statusFilter === '' || this.statusFilter === mergedOrder.order_status) {
+                this.orders.unshift(mergedOrder);
+            }
+
+            if (this.selectedOrder?.id === incomingOrder.id && this.shouldApplyIncomingOrder(this.selectedOrder, incomingOrder)) {
+                this.selectedOrder = this.mergeOrder(this.selectedOrder, incomingOrder);
+            }
+        },
+
         statusLabel(status) {
             return {
                 '': 'Semua Status',
@@ -513,10 +660,18 @@ function orderManager() {
         },
 
         canAddItemsToOrder(order) {
+            return this.canChangeOrderItems(order);
+        },
+
+        canChangeOrderItems(order) {
             return this.canAddOrderItems
                 && order
                 && !['Disajikan', 'Dibatalkan'].includes(order.order_status)
                 && order.payment_status !== 'paid';
+        },
+
+        isUpdatingItem(itemId) {
+            return Boolean(this.updatingItems[itemId]);
         },
 
         availableAdditionalMenus() {
@@ -535,6 +690,18 @@ function orderManager() {
             return this.selectedAdditionalMenuVariants().find(variant => String(variant.id) === String(this.addItemForm.variant_id)) || null;
         },
 
+        selectedEditMenu() {
+            return this.additionalMenus.find(menu => String(menu.id) === String(this.editItemForm.menu_id)) || null;
+        },
+
+        selectedEditMenuVariants() {
+            return this.selectedEditMenu()?.variants || [];
+        },
+
+        selectedEditVariant() {
+            return this.selectedEditMenuVariants().find(variant => String(variant.id) === String(this.editItemForm.variant_id)) || null;
+        },
+
         addItemUnitPrice() {
             const menu = this.selectedAdditionalMenu();
             if (!menu) return 0;
@@ -544,6 +711,25 @@ function orderManager() {
 
         addItemTotal() {
             return this.addItemUnitPrice() * Math.max(1, Number(this.addItemForm.quantity || 1));
+        },
+
+        editItemUnitPrice() {
+            const menu = this.selectedEditMenu();
+            if (!menu) return Number(this.editingItem?.price_at_time || 0);
+            if (
+                this.editingItem
+                && String(this.editingItem.menu_id) === String(this.editItemForm.menu_id)
+                && this.editingItem.variant_selected
+                && !this.editItemForm.variant_id
+            ) {
+                return Number(this.editingItem.price_at_time || menu.price || 0);
+            }
+
+            return Number(menu.price || 0) + Number(this.selectedEditVariant()?.extra_price || 0);
+        },
+
+        editItemTotal() {
+            return this.editItemUnitPrice() * Math.max(1, Number(this.editItemForm.quantity || 1));
         },
 
         openAddItemModal(order) {
@@ -563,6 +749,42 @@ function orderManager() {
             this.addItemModalOpen = false;
             this.addItemOrder = null;
             this.addItemForm = { menu_id: '', variant_id: '', quantity: 1, note: '' };
+        },
+
+        openEditItemModal(order, item) {
+            if (!this.canChangeOrderItems(order)) {
+                window.restoAlert({ variant: 'info', title: 'Tidak bisa diubah', message: 'Pesanan sudah lunas, disajikan, atau dibatalkan.' });
+                return;
+            }
+
+            this.editItemOrder = order;
+            this.editingItem = item;
+            const variant = (this.additionalMenus.find(menu => String(menu.id) === String(item.menu_id))?.variants || [])
+                .find(option => option.variant_name === item.variant_selected);
+            this.editItemForm = {
+                menu_id: item.menu_id || item.menu?.id || '',
+                variant_id: variant?.id || '',
+                quantity: Math.max(1, Number(item.quantity || 1)),
+                note: item.note || ''
+            };
+            this.editItemModalOpen = true;
+
+            if (this.additionalMenus.length === 0) this.fetchAdditionalMenus();
+        },
+
+        closeEditItemModal() {
+            this.editItemModalOpen = false;
+            this.editItemOrder = null;
+            this.editingItem = null;
+            this.editItemForm = { menu_id: '', variant_id: '', quantity: 1, note: '' };
+        },
+
+        applyUpdatedOrder(updatedOrder) {
+            const idx = this.orders.findIndex(order => order.id === updatedOrder.id);
+            if (idx !== -1) this.orders[idx] = updatedOrder;
+            if (this.selectedOrder?.id === updatedOrder.id) this.selectedOrder = updatedOrder;
+            if (this.addItemOrder?.id === updatedOrder.id) this.addItemOrder = updatedOrder;
+            if (this.editItemOrder?.id === updatedOrder.id) this.editItemOrder = updatedOrder;
         },
 
         async submitAdditionalItem() {
@@ -595,9 +817,7 @@ function orderManager() {
                 const json = await res.json();
                 if (res.ok) {
                     const updatedOrder = json.data;
-                    const idx = this.orders.findIndex(order => order.id === updatedOrder.id);
-                    if (idx !== -1) this.orders[idx] = updatedOrder;
-                    if (this.selectedOrder?.id === updatedOrder.id) this.selectedOrder = updatedOrder;
+                    this.applyUpdatedOrder(updatedOrder);
                     this.closeAddItemModal();
                     await window.restoAlert({ variant: 'success', title: 'Item ditambahkan', message: 'Tagihan pesanan sudah diperbarui.' });
                 } else {
@@ -609,6 +829,89 @@ function orderManager() {
                 await window.restoAlert({ variant: 'danger', title: 'Gagal tambah item', message: 'Tidak bisa terhubung ke server.' });
             } finally {
                 this.addingItem = false;
+            }
+        },
+
+        async submitEditedItem() {
+            if (!this.editItemOrder || !this.editingItem || this.updatingItem) return;
+
+            this.updatingItem = true;
+            const variant = this.selectedEditVariant();
+
+            try {
+                const res = await fetch(`/api/staff/orders/${this.editItemOrder.id}/items/${this.editingItem.id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        ...window.restoAuthHeaders(),
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        menu_id: Number(this.editItemForm.menu_id),
+                        quantity: Math.max(1, Number(this.editItemForm.quantity || 1)),
+                        variant_id: variant?.id || null,
+                        variant_selected: variant?.variant_name || (
+                            String(this.editingItem.menu_id) === String(this.editItemForm.menu_id)
+                                ? (this.editingItem.variant_selected || null)
+                                : null
+                        ),
+                        note: this.editItemForm.note || null
+                    })
+                });
+
+                const json = await res.json();
+                if (res.ok) {
+                    this.applyUpdatedOrder(json.data);
+                    this.closeEditItemModal();
+                    await window.restoAlert({ variant: 'success', title: 'Item diperbarui', message: 'Tagihan pesanan sudah dihitung ulang.' });
+                } else {
+                    const message = json.message || Object.values(json.errors || {}).flat().join('\n') || 'Item tidak bisa diperbarui.';
+                    await window.restoAlert({ variant: 'danger', title: 'Gagal update item', message });
+                }
+            } catch (e) {
+                console.error('Error updating item', e);
+                await window.restoAlert({ variant: 'danger', title: 'Gagal update item', message: 'Tidak bisa terhubung ke server.' });
+            } finally {
+                this.updatingItem = false;
+            }
+        },
+
+        async deleteOrderItem(order, item) {
+            if (!this.canChangeOrderItems(order) || this.isUpdatingItem(item.id)) return;
+
+            const confirmed = await window.restoConfirm({
+                variant: 'danger',
+                title: 'Hapus item?',
+                message: `${item.menu?.name || item.menu_name || 'Item'} akan dihapus dari pesanan dan tagihan dihitung ulang.`,
+                confirmText: 'Hapus'
+            });
+            if (!confirmed) return;
+
+            this.updatingItems = { ...this.updatingItems, [item.id]: true };
+
+            try {
+                const res = await fetch(`/api/staff/orders/${order.id}/items/${item.id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        ...window.restoAuthHeaders(),
+                        'Accept': 'application/json'
+                    }
+                });
+                const json = await res.json();
+
+                if (res.ok) {
+                    this.applyUpdatedOrder(json.data);
+                    await window.restoAlert({ variant: 'success', title: 'Item dihapus', message: 'Tagihan pesanan sudah dihitung ulang.' });
+                } else {
+                    const message = json.message || Object.values(json.errors || {}).flat().join('\n') || 'Item tidak bisa dihapus.';
+                    await window.restoAlert({ variant: 'danger', title: 'Gagal hapus item', message });
+                }
+            } catch (e) {
+                console.error('Error deleting item', e);
+                await window.restoAlert({ variant: 'danger', title: 'Gagal hapus item', message: 'Tidak bisa terhubung ke server.' });
+            } finally {
+                const { [item.id]: _finished, ...remaining } = this.updatingItems;
+                this.updatingItems = remaining;
             }
         },
 
@@ -627,14 +930,16 @@ function orderManager() {
                     },
                     body: JSON.stringify({ status: newStatus })
                 });
+                const json = await res.json();
                 if(res.ok) {
-                    // Update locally if echo isn't fast enough
+                    const updatedOrder = json.data || { id: orderId, order_status: newStatus };
                     const idx = this.orders.findIndex(o => o.id === orderId);
                     if(idx !== -1) {
-                        if(this.statusFilter && this.statusFilter !== newStatus) {
+                        const mergedOrder = this.mergeOrder(this.orders[idx], updatedOrder);
+                        if(this.statusFilter && this.statusFilter !== mergedOrder.order_status) {
                             this.orders.splice(idx, 1);
                         } else {
-                            this.orders[idx].order_status = newStatus;
+                            this.orders[idx] = mergedOrder;
                         }
                     }
                 } else {
